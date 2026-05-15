@@ -1,5 +1,7 @@
 # Solar System — Real Newtonian Dynamics
 
+**→ Live demo: [foxontheerun.github.io/kam-solar-system](https://foxontheerun.github.io/kam-solar-system/)**
+
 Interactive 3D simulation of the Solar System with real planetary masses, distances, and Newtonian gravity. The KAM-stability panel lets you break stability by scaling masses, eccentricities, and orbital inclinations, or by applying gas drag.
 
 Built with [three.js](https://threejs.org/), no build step required.
