@@ -4,24 +4,60 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Solar System — Real Newtonian Dynamics</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta name="description" content="Interactive 3D simulation of the Solar System with real Newtonian gravity. Break KAM stability through mass, eccentricity, inclination, or gas drag." />
+  <meta property="og:title" content="Solar System — Real Newtonian Dynamics" />
+  <meta property="og:description" content="Interactive 3D simulation with real masses, Velocity-Verlet integration, and KAM-stability presets you can break." />
+  <meta property="og:image" content="screenshots/break-kam-circumbinary.png" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="stylesheet" href="styles/tokens.css" />
+  <link rel="stylesheet" href="styles/main.css" />
   <script type="importmap">
     { "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        "three": "./vendor/three/build/three.module.js",
+        "three/addons/": "./vendor/three/examples/jsm/"
     } }
   </script>
 </head>
 <body>
   <div id="app"></div>
 
-  <button id="hudToggle" class="hud-toggle" title="Hide / show panel" aria-label="Toggle panel">›</button>
+  <div class="floating-controls" id="floatingControls">
+    <button id="pauseBtn" class="floating-btn" title="Pause / resume (space)" aria-label="Pause">
+      <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <rect x="7" y="5" width="3.5" height="14" rx="0.5"/>
+        <rect x="13.5" y="5" width="3.5" height="14" rx="0.5"/>
+      </svg>
+      <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <polygon points="7 4.5 19 12 7 19.5"/>
+      </svg>
+    </button>
+    <button id="screenshotBtn" class="floating-btn" title="Save screenshot" aria-label="Screenshot">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+    </button>
+  </div>
+
+  <button id="hudToggle" class="hud-toggle" title="Toggle panel" aria-label="Toggle panel">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="9 6 15 12 9 18"/>
+    </svg>
+  </button>
 
   <aside class="hud" id="hud">
     <div class="hud-head">
       <h1>Solar System</h1>
       <p class="lead">9 bodies, Newtonian gravity. Distances real (AU), bodies enlarged for visibility.</p>
     </div>
+
+    <details class="section section--legend" open>
+      <summary>Planets</summary>
+      <div class="section-body">
+        <div id="legendInner" class="legend-rows"></div>
+      </div>
+    </details>
 
     <details class="section" open>
       <summary>View</summary>
@@ -36,10 +72,10 @@
         <div class="toggles">
           <label class="toggle">orbits <input type="checkbox" id="tOrbits" checked></label>
           <label class="toggle">planet trails <input type="checkbox" id="tTrails" checked></label>
-          <label class="toggle">labels <input type="checkbox" id="tLabels" checked></label>
+          <label class="toggle">labels <input type="checkbox" id="tLabels"></label>
           <label class="toggle" title="Decorative — particles move on fixed Kepler orbits and do not participate in N-body gravity. Auto-hidden when the system collapses.">asteroid belt <input type="checkbox" id="tBelt" checked></label>
           <label class="toggle" title="Switch between heliocentric (Sun fixed at origin) and inertial (system's centre of mass at origin; Sun visibly wobbles).">inertial frame <input type="checkbox" id="tInertial"></label>
-          <label class="toggle" title="Show a marker at the system's centre of mass. Visible in inertial frame.">barycenter <input type="checkbox" id="tBarycenter"></label>
+          <label class="toggle" title="Show a marker at the system's centre of mass. Auto-enables inertial frame. Reduce Sun visual scale to see the marker outside the Sun's drawn body.">barycenter <input type="checkbox" id="tBarycenter"></label>
           <label class="toggle">pause <input type="checkbox" id="tPause"></label>
         </div>
       </div>
@@ -50,10 +86,10 @@
       <div class="section-body">
         <div class="field">
           <div class="field-row">
-            <span class="label">simulation speed</span>
-            <span class="val" id="speedVal">10 years/s</span>
+            <label class="label" for="speed">simulation speed</label>
+            <span class="val" id="speedVal">1.0 years/s</span>
           </div>
-          <input id="speed" type="range" min="0" max="3" step="0.05" value="1.0">
+          <input id="speed" type="range" min="0" max="3" step="0.05" value="0">
           <div class="hint">logarithmic — 1 to 1000 years/s</div>
         </div>
       </div>
@@ -62,21 +98,22 @@
     <details class="section">
       <summary>Visual scale</summary>
       <div class="section-body">
+        <p>1× is the default <em>exaggerated</em> size — bodies are inflated relative to orbital distance so they remain visible. The Sun is rendered ≈ 35× wider than at real proportions, planets ≈ 2000× on average. Adjusting these sliders is purely cosmetic and does not affect gravity.</p>
         <div class="field">
           <div class="field-row">
-            <span class="label">Sun size</span>
-            <span class="val" id="sunScaleVal">1.0×</span>
+            <label class="label" for="sunScale">Sun size</label>
+            <span class="val" id="sunScaleVal">1.0× (≈ 35× real)</span>
           </div>
           <input id="sunScale" type="range" min="0.1" max="3" step="0.05" value="1.0">
           <div class="hint">visual only — does not affect gravity</div>
         </div>
         <div class="field">
           <div class="field-row">
-            <span class="label">Planet sizes</span>
-            <span class="val" id="planetScaleVal">1.0×</span>
+            <label class="label" for="planetScale">Planet sizes</label>
+            <span class="val" id="planetScaleVal">1.0× (≈ 2,000× real avg)</span>
           </div>
           <input id="planetScale" type="range" min="0.1" max="5" step="0.05" value="1.0">
-          <div class="hint">visual only — see how exaggerated current sizes are</div>
+          <div class="hint">gas giants ~900×, rocky planets ~3000× — visual only</div>
         </div>
       </div>
     </details>
@@ -84,40 +121,43 @@
     <details class="section">
       <summary>KAM stability</summary>
       <div class="section-body">
+        <p><b>KAM</b> (Kolmogorov–Arnold–Moser): a theorem about which orbits in a perturbed gravitational system stay stable. Orbits with irrational period ratios — especially the golden ratio φ — resist perturbations the longest; integer ratios like 2:1 and 3:1 collapse through resonance. The controls below let you push the system past these thresholds and watch what survives.</p>
+        <p>Distances are given in <b>AU</b> (astronomical units; 1 AU ≈ 149.6 million km, the mean Earth–Sun distance). Jupiter's real orbital distance is 5.20 AU; the presets below pull it inward to specific resonance positions with Earth.</p>
+
         <div class="field">
           <div class="field-row">
-            <span class="label">planet masses ×</span>
+            <label class="label" for="massScale">planet masses ×</label>
             <span class="val" id="massScaleVal">1×</span>
           </div>
           <input id="massScale" type="range" min="0" max="3" step="0.05" value="0">
-          <div class="hint">at high values Earth starts to "wander" relative to its orbit</div>
+          <div class="hint">Uniform scale on planetary masses (Sun stays at M=1). At the real Jupiter position (5.20 AU) even ×100 keeps the inner system bounded on visible timescales — destabilisation requires <em>combining</em> high mass with resonant positioning (use the KAM presets below).</div>
         </div>
 
         <div class="field">
           <div class="field-row">
-            <span class="label">eccentricity ×</span>
+            <label class="label" for="eccScale">eccentricity ×</label>
             <span class="val" id="eccScaleVal">1.0×</span>
           </div>
           <input id="eccScale" type="range" min="0.5" max="4.0" step="0.1" value="1.0">
-          <div class="hint">scales eccentricity of all orbits (with re-initialisation)</div>
+          <div class="hint">Multiplies each planet's initial eccentricity. e=0 is a perfect circle, e=0.5 a strongly elongated ellipse. Re-initialises orbits — physics state resets.</div>
         </div>
 
         <div class="field">
           <div class="field-row">
-            <span class="label">inclinations ×</span>
+            <label class="label" for="incScale">inclinations ×</label>
             <span class="val" id="incScaleVal">1.0×</span>
           </div>
           <input id="incScale" type="range" min="1" max="8" step="0.1" value="1.0">
-          <div class="hint">real inclinations 0.8°–7° — barely visible. Scale up to see them</div>
+          <div class="hint">Multiplies orbital inclination relative to the ecliptic plane. Real Solar-System inclinations are 0.8°–7° and barely visible in 3D; ×8 makes the layered structure clear without breaking stability.</div>
         </div>
 
         <div class="field">
           <div class="field-row">
-            <span class="label">gas drag</span>
+            <label class="label" for="drag">gas drag</label>
             <span class="val" id="dragVal">0</span>
           </div>
           <input id="drag" type="range" min="0" max="100" step="1" value="0">
-          <div class="hint">energy dissipation (as in a protoplanetary disk) — orbits spiral inward and planets fall into the Sun</div>
+          <div class="hint">Linear drag F = −k·v on every planet, analogous to protoplanetary-disc gas drag. Orbits decay exponentially with timescale τ ≈ 1/(2k); at slider ~90 planets reach the Sun within tens of simulated years.</div>
         </div>
 
         <div class="field">
@@ -125,11 +165,20 @@
           <div class="presets">
             <button data-jup="reset" title="Restore the real Solar System: Jupiter at 5.20 AU, real masses, no perturbations.">Real (5.20 AU)</button>
             <button data-jup="phi" class="golden" title="Jupiter at a ≈ 1.376 AU — period ratio with Earth equals the golden ratio φ. The most irrational of irrationals. KAM theorem predicts orbits at this period ratio resist perturbations the longest. No collapse.">φ — stable</button>
-            <button data-jup="2to1" class="danger" title="Jupiter at a ≈ 1.587 AU — period exactly twice Earth's. In our real Solar System this corresponds to a Kirkwood gap, an asteroid-free zone. With masses ×50, inner planets get ejected within years.">2:1 → collapse</button>
+            <button data-jup="2to1" class="danger" title="Jupiter at a ≈ 1.587 AU — period exactly twice Earth's. The same MMR mechanism carves the Kirkwood gap at 3.27 AU in the real asteroid belt (Jupiter at 5.2 AU). With masses ×50, inner planets are ejected within decades.">2:1 → collapse</button>
             <button data-jup="3to1" class="danger" title="Jupiter at a ≈ 2.08 AU — period three times Earth's. Another Kirkwood gap. Resonant kicks accumulate; orbits diverge.">3:1 → collapse</button>
           </div>
           <button data-jup="break" class="danger wide" title="Jupiter at the 2:1 resonance + planet masses ×800. Catastrophic collapse within a single orbital period.">⚠ break KAM</button>
           <button id="resetSim" class="wide">⟳ reset state</button>
+
+          <ul class="presets-key">
+            <li><b>Real (5.20 AU)</b> — restores the actual Solar System. No perturbations.</li>
+            <li><b>φ — stable</b> — Jupiter at <em>a</em> ≈ 1.376 AU; Jupiter:Earth period ratio = φ (golden ratio). KAM-protected, no collapse on visible timescales.</li>
+            <li><b>2:1 → collapse</b> — Jupiter at <em>a</em> ≈ 1.587 AU + masses ×50. Earth–Jupiter mean-motion resonance; inner system ejected within decades. Same mechanism that carves the Kirkwood gap at 3.27 AU in the real belt.</li>
+            <li><b>3:1 → collapse</b> — Jupiter at <em>a</em> ≈ 2.08 AU + masses ×30. Weaker MMR than 2:1, slightly slower collapse.</li>
+            <li><b>⚠ break KAM</b> — 2:1 position + masses ×800. Jupiter becomes gravitationally stellar-mass (0.76 M⊙); the Sun–Jupiter pair forms a tight binary. Earth and Mars fall inside Jupiter's stellar Hill sphere (R ≈ 1 AU); Mercury and Venus are ejected by the perturbation. Neptune at 30 AU survives and ends up on a circumbinary orbit.</li>
+            <li><b>⟳ reset state</b> — restore positions and velocities to the last saved snapshot.</li>
+          </ul>
         </div>
       </div>
     </details>
@@ -137,22 +186,30 @@
     <details class="section">
       <summary>Diagnostics</summary>
       <div class="section-body">
+        <p>Real-time metrics. Orbit counters confirm physics is running and show the timescale separation between inner and outer planets. The eccentricity rows are the <b>KAM-stability indicator</b> — they stay near nominal values in a stable system and grow under perturbation. Watch them spike when you apply a collapse preset.</p>
+
         <div class="diagnostics">
           <div>time: <span id="elapsed">0.0</span> years</div>
           <div>Mercury orbits: <span id="mercuryOrbits">0</span></div>
           <div>Jupiter orbits: <span id="jupiterOrbits">0</span></div>
         </div>
+        <div class="hint">Inner planets run ≈ 50× faster than outer ones (Mercury's period 0.24 y vs Jupiter's 11.9 y). Counters increment with simulated time; reset when you apply a preset or click <em>reset state</em>.</div>
 
-        <div class="diagnostics" style="margin-top:8px;">
+        <div class="diagnostics" style="margin-top:14px;">
           <div>Mercury e<sub>max</sub>: <span id="ecMercury">0.21</span></div>
           <div>Earth e<sub>max</sub>: <span id="ecEarth">0.02</span></div>
           <div>Mars e<sub>max</sub>: <span id="ecMars">0.09</span></div>
-          <div>Jupiter–Saturn T<sub>S</sub>/T<sub>J</sub> = 2.484 ≈ 5:2</div>
         </div>
+        <div class="hint">Peak instantaneous eccentricity since last reset, computed via the Laplace–Runge–Lenz vector. Starts at the nominal real-system values (0.206 / 0.017 / 0.093) and stays there in a stable run. Grows past 0.3–1 (planet on a hyperbolic ejection trajectory) when KAM stability breaks. Display caps at 2.</div>
 
-        <div class="diagnostics" id="consumedRow" style="display:none; margin-top:8px;">
+        <div class="diagnostics" style="margin-top:14px;">
+          <div>Jupiter–Saturn T<sub>S</sub>/T<sub>J</sub> = <span id="tsTj">2.484</span></div>
+        </div>
+        <div class="hint">Saturn:Jupiter period ratio, computed from <em>osculating</em> semi-major axes (`a` recovered from current position and velocity via vis-viva), so the value reacts to perturbations and to KAM-preset changes in real time. In the real Solar System this equals 2.484 ≈ 5:2 — the <b>Great Inequality</b>, identified by Halley (1695) and Euler (1750s) and quantitatively explained by Laplace in 1785 as a near-5:2 commensurability. It drives oscillations in Jupiter's and Saturn's semi-major axes (amplitudes ≈ 0.002 AU and 0.005 AU respectively) and mean longitudes over a libration period of ≈ 883 years.</div>
+
+        <div class="diagnostics" id="consumedRow" style="display:none; margin-top:14px;">
           consumed by Sun: <span id="consumed">0</span>
-          <div style="color:#fca5a5" id="consumedList"></div>
+          <div id="consumedList"></div>
         </div>
       </div>
     </details>
@@ -165,8 +222,13 @@
         <p><b>Barycenter.</b> In reality the centre of mass of the Sun–Jupiter system lies <b>outside</b> the Sun's surface (at 1.07 solar radii from the centre). With the Sun visually enlarged here, the marker appears <b>inside</b> the Sun's drawn body. Reduce the Sun's visual scale to see the real geometric relation.</p>
         <p><b>Time</b> is accelerated — the speed slider ranges from 1 to 1000 years/s.</p>
         <p><b>Orbital lines</b> are theoretical (Keplerian, two-body). Under strong perturbations planets deviate from them — that is the breakdown of KAM tori.</p>
+        <p><b>Asteroid belt</b> is decorative — particles follow fixed Kepler orbits around the Sun's mesh, do not participate in N-body gravity, and rigidly track the Sun's wobble in the inertial frame (rather than orbiting the barycenter independently). It auto-hides when a planet falls into the Sun, so the belt doesn't keep peacefully orbiting through a collapsed system.</p>
       </div>
     </details>
+
+    <div class="hud-footer">
+      By <a href="https://bulatovaalsu.substack.com" target="_blank" rel="noopener noreferrer">Alsu Bulatova</a> · <a href="https://github.com/foxontheerun/solar-system-split" target="_blank" rel="noopener noreferrer">source on GitHub</a>
+    </div>
   </aside>
 
   <aside class="legend" id="legend"></aside>

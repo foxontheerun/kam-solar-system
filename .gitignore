@@ -1,0 +1,21 @@
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Node — test runner deps (vitest, three). Runtime is still no-build,
+# but `npm install` is needed before `npm test`.
+node_modules/
+npm-debug.log
+.npm
+
+# Local notes / drafts not intended for the repo
+*.local.md
+scratch/

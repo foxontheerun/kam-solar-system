@@ -1,6 +1,29 @@
 import { CAMERA_PRESETS, KAM_PRESETS } from './data.js';
 
 /**
+ * Osculating semi-major axis: the `a` of the Keplerian orbit that osculates
+ * (touches) the current trajectory at this instant. Recovered from current
+ * position and velocity via vis-viva: 1/a = 2/r − v²/μ. With code units
+ * GM_sun = 1, the formula simplifies to 1/a = 2/r − v². Returns +Infinity
+ * for unbound trajectories (e ≥ 1).
+ */
+function osculatingA(body, sun) {
+  const r = body.pos.distanceTo(sun.pos);
+  const vRel = body.vel.clone().sub(sun.vel);
+  const denom = 2 / r - vRel.lengthSq();
+  return denom > 0 ? 1 / denom : Infinity;
+}
+
+function osculatingPeriodRatio(outer, inner, sun) {
+  const aOuter = osculatingA(outer, sun);
+  const aInner = osculatingA(inner, sun);
+  if (!Number.isFinite(aOuter) || !Number.isFinite(aInner) || aInner <= 0) {
+    return NaN;
+  }
+  return Math.pow(aOuter / aInner, 1.5);
+}
+
+/**
  * Wires every DOM control on the HUD to the simulation. Owns the per-slider
  * scale factors (mass, eccentricity, inclination, drag, speed, visual scales)
  * and applies KAM presets in batch with a single re-initialisation at the end.
@@ -17,10 +40,11 @@ export class UIController {
    * @param {Array<THREE.Mesh>} deps.planetMeshes
    * @param {THREE.Sprite} deps.barycenterMarker
    */
-  constructor({ physics, belt, planets, camera, controls, sunMesh, planetMeshes, barycenterMarker }) {
+  constructor({ physics, belt, planets, sun, camera, controls, sunMesh, planetMeshes, barycenterMarker }) {
     this.physics = physics;
     this.belt = belt;
     this.planets = planets;
+    this.sun = sun;
     this.camera = camera;
     this.controls = controls;
     this.sunMesh = sunMesh;
@@ -41,6 +65,38 @@ export class UIController {
     this._bindEvents();
     this._applySpeed();
     this._refreshToggleVisibility();
+    this._renderLegend();
+  }
+
+  /**
+   * Render the legend (planet name, colour swatch, orbital period) into both
+   * the fixed top-left card and the in-HUD mobile section. Period is computed
+   * from the current semi-major axis via Kepler's third law, so KAM presets
+   * that move Jupiter inward show its new period instead of the original
+   * 11.86-year value.
+   */
+  _renderLegend() {
+    const bodies = [this.sun, ...this.planets];
+    const rows = bodies.map(b => {
+      let periodStr = '—';
+      if (b.a !== undefined) {
+        const T = Math.pow(b.a, 1.5);
+        periodStr = `${T.toFixed(T < 10 ? 2 : 1)} years`;
+      }
+      const swatch = `#${b.color.toString(16).padStart(6, '0')}`;
+      return `<div class="row">
+        <span class="row-left">
+          <span class="dot" style="background:${swatch}"></span>
+          <span class="name">${b.name}</span>
+        </span>
+        <span class="meta">${periodStr}</span>
+      </div>`;
+    }).join('');
+    const note = '<div class="legend-note">Periods are Keplerian — computed from each body\'s current semi-major axis via T = a<sup>3/2</sup>. KAM presets that move Jupiter inward update its period in real time. Under perturbation the true N-body period drifts slightly from the nominal value shown here.</div>';
+    for (const id of ['legend', 'legendInner']) {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = rows + note;
+    }
   }
 
   _collectDOM() {
@@ -55,9 +111,9 @@ export class UIController {
       'sunScale', 'sunScaleVal',
       'planetScale', 'planetScaleVal',
       'resetSim',
-      'ecMercury', 'ecEarth', 'ecMars',
+      'ecMercury', 'ecEarth', 'ecMars', 'tsTj',
       'consumedRow', 'consumed', 'consumedList',
-      'hudToggle', 'hud',
+      'hudToggle', 'hud', 'pauseBtn',
     ];
     const dom = {};
     for (const id of ids) dom[id] = document.getElementById(id);
@@ -104,17 +160,29 @@ export class UIController {
 
     d.sunScale.addEventListener('input', e => {
       const s = parseFloat(e.target.value);
-      d.sunScaleVal.textContent = s.toFixed(1) + '×';
+      d.sunScaleVal.textContent = `${s.toFixed(1)}× (≈ ${Math.round(s * 35).toLocaleString('en-US')}× real)`;
       this.sunMesh.scale.set(s, s, s);
     });
 
     d.planetScale.addEventListener('input', e => {
       const s = parseFloat(e.target.value);
-      d.planetScaleVal.textContent = s.toFixed(1) + '×';
+      d.planetScaleVal.textContent = `${s.toFixed(1)}× (≈ ${Math.round(s * 2000).toLocaleString('en-US')}× real avg)`;
       for (const m of this.planetMeshes) m.scale.set(s, s, s);
     });
 
     d.resetSim.addEventListener('click', () => this._reinit());
+
+    // Auto-enable inertial frame when the user turns on the barycenter
+    // marker. Without inertial frame the Sun is pinned to the origin and the
+    // marker is geometrically inside its mesh, so the toggle would silently
+    // do nothing. We don't auto-disable inertial when barycenter is turned
+    // off — inertial frame is useful on its own (shows Sun wobble).
+    d.tBarycenter.addEventListener('change', () => {
+      if (d.tBarycenter.checked && !d.tInertial.checked) {
+        d.tInertial.checked = true;
+        d.tInertial.dispatchEvent(new Event('change'));
+      }
+    });
 
     [d.tOrbits, d.tTrails, d.tLabels, d.tBelt, d.tInertial, d.tBarycenter, d.tPause]
       .forEach(el => el.addEventListener('change', () => this._refreshToggleVisibility()));
@@ -130,8 +198,17 @@ export class UIController {
     d.hudToggle.addEventListener('click', () => {
       const collapsed = d.hud.classList.toggle('hud--collapsed');
       d.hudToggle.classList.toggle('hud-toggle--shown', !collapsed);
-      d.hudToggle.textContent = collapsed ? '‹' : '›';
       d.hudToggle.title = collapsed ? 'Show panel' : 'Hide panel';
+    });
+
+    d.pauseBtn.addEventListener('click', () => this._togglePause());
+
+    document.addEventListener('keydown', e => {
+      if (e.code !== 'Space') return;
+      const tag = (e.target.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return;
+      e.preventDefault();
+      this._togglePause();
     });
   }
 
@@ -188,18 +265,33 @@ export class UIController {
     if (this._suspendReinit) return;
     this.physics.reinitializeFromCurrent();
     Object.keys(this.maxEcc).forEach(k => this.maxEcc[k] = 0);
+    // After reinit, consumed planets are restored. Re-apply current toggle
+    // state to make their trails and orbit lines visible again — otherwise
+    // they stay hidden from the previous capture event.
+    this._refreshToggleVisibility();
+    this._renderLegend();
   }
 
   _refreshToggleVisibility() {
     const d = this._dom;
+    const trailsOn = d.tTrails.checked;
     for (const b of this.physics.bodies) {
       if (b.consumed) continue;
-      if (b.orbitLine)    b.orbitLine.visible = d.tOrbits.checked;
-      if (b.trail)        b.trail.line.visible = d.tTrails.checked;
-      if (b.labelSprite)  b.labelSprite.visible = d.tLabels.checked;
+      if (b.orbitLine) b.orbitLine.visible = d.tOrbits.checked;
+      if (b.trail) {
+        // Transitioning off → on: clear the stale buffer so the new trail
+        // doesn't bridge old positions to current ones with a straight line.
+        if (trailsOn && !b.trail.line.visible) {
+          b.trail.count = 0;
+          b.trail.line.geometry.setDrawRange(0, 0);
+        }
+        b.trail.line.visible = trailsOn;
+      }
+      if (b.labelSprite) b.labelSprite.visible = d.tLabels.checked;
     }
     this.belt.visible = d.tBelt.checked;
     this.paused = d.tPause.checked;
+    if (d.pauseBtn) d.pauseBtn.classList.toggle('is-paused', this.paused);
 
     const newMode = d.tInertial.checked ? 'inertial' : 'heliocentric';
     if (newMode !== this.frameMode) {
@@ -212,6 +304,12 @@ export class UIController {
       }
     }
     this._refreshBarycenterVisibility();
+  }
+
+  _togglePause() {
+    const d = this._dom;
+    d.tPause.checked = !d.tPause.checked;
+    d.tPause.dispatchEvent(new Event('change'));
   }
 
   _refreshBarycenterVisibility() {
@@ -248,6 +346,16 @@ export class UIController {
     d.ecMercury.textContent = this.maxEcc.Mercury.toFixed(3);
     d.ecEarth.textContent   = this.maxEcc.Earth.toFixed(3);
     d.ecMars.textContent    = this.maxEcc.Mars.toFixed(3);
+
+    // Saturn:Jupiter period ratio from osculating semi-major axes recovered
+    // from current position and velocity via vis-viva: 1/a = 2/r − v²/μ.
+    // Using osculating (not preset) `a` lets the ratio respond to in-run
+    // secular drift and resonance dynamics, not just to KAM-preset jumps.
+    const sun = this.physics.bodies[0];
+    const jup = this.physics.bodies[5];
+    const sat = this.physics.bodies[6];
+    const ratio = osculatingPeriodRatio(sat, jup, sun);
+    d.tsTj.textContent = Number.isFinite(ratio) ? ratio.toFixed(3) : '—';
 
     if (stats.consumed.length) {
       d.consumedRow.style.display = '';

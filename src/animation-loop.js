@@ -5,6 +5,9 @@ const TRAIL_SAMPLE_BASE = 4;
 // Cap on physics steps per animation frame. With nine bodies this is cheap;
 // 30000 lets the speed slider stay honest up to ~1000 years/s on 60 fps.
 const MAX_STEPS_PER_FRAME = 30000;
+// Push HUD updates at ~10 Hz instead of every frame — six textContent writes
+// and a display toggle per frame is wasted work; the eye can't tell.
+const HUD_PUSH_EVERY_FRAMES = 6;
 
 /**
  * Drives the simulation. Reads `speed` and `paused` from the UI, advances the
@@ -32,6 +35,7 @@ export class AnimationLoop {
     this.controls = controls;
 
     this._stepCounter = 0;
+    this._hudCounter = 0;
     this._lastWallTime = performance.now();
     this._frame = this._frame.bind(this);
 
@@ -58,7 +62,10 @@ export class AnimationLoop {
       this._syncMeshPositions();
       this.belt.update(this.physics.totalTime);
       this._updateMaxEcc();
-      this._pushHUD();
+      if (++this._hudCounter >= HUD_PUSH_EVERY_FRAMES) {
+        this._hudCounter = 0;
+        this._pushHUD();
+      }
     }
 
     this.controls.update();

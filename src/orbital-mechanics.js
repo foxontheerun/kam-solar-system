@@ -72,8 +72,12 @@ export function buildOrbitVertices(planet, segments = 256) {
 
 /**
  * Instantaneous orbital eccentricity of a body in the heliocentric frame.
- * Uses the Laplace–Runge–Lenz vector. Capped at 2 to keep ejected planets
- * from overflowing the display.
+ * Uses the Laplace–Runge–Lenz vector with `μ = G · M_sun` (test-particle
+ * approximation, matching the convention used in {@link placePlanetState}).
+ *
+ * Hyperbolic trajectories (`e > 1`) are clamped at 2 for display purposes —
+ * any ejected planet shows up as `e ≈ 2` in the HUD, not its true unbounded
+ * value. This is a display convenience, not a physical statement.
  *
  * @param {{pos: THREE.Vector3, vel: THREE.Vector3, mass: number}} body
  * @param {{pos: THREE.Vector3, vel: THREE.Vector3, mass: number}} sun
@@ -82,7 +86,7 @@ export function buildOrbitVertices(planet, segments = 256) {
 export function instantaneousEcc(body, sun) {
   const r = body.pos.clone().sub(sun.pos);
   const v = body.vel.clone().sub(sun.vel);
-  const mu = G * (sun.mass + body.mass);
+  const mu = G * sun.mass;
   const h = new THREE.Vector3().crossVectors(r, v);
   const eVec = v.clone().cross(h).divideScalar(mu).sub(r.clone().normalize());
   return Math.min(2, eVec.length());

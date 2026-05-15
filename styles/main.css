@@ -1,0 +1,552 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg-page);
+  color: var(--text-body);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  overflow: hidden;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+}
+
+.hud {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  bottom: 16px;
+  width: 360px;
+  padding: 22px 24px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--bg-panel);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--border-1);
+  border-radius: 14px;
+  font-size: 15px;
+  line-height: 1.55;
+  transition:
+    transform 220ms ease,
+    opacity 220ms ease;
+}
+.hud--collapsed {
+  transform: translateX(calc(100% + 24px));
+  opacity: 0;
+  pointer-events: none;
+}
+.hud::-webkit-scrollbar {
+  width: 6px;
+}
+.hud::-webkit-scrollbar-thumb {
+  background: var(--border-1);
+  border-radius: 3px;
+}
+.hud::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
+
+.hud-head {
+  padding-bottom: 6px;
+}
+.hud-head h1 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 6px;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+.hud-head .lead {
+  margin: 0 0 18px;
+  color: var(--text-lead);
+  font-size: 13.5px;
+}
+
+.floating-controls {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  gap: 8px;
+}
+.floating-btn {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--bg-panel-strong);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--border-3);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 120ms ease;
+}
+.floating-btn:hover {
+  background: var(--accent-bg-strong);
+}
+.floating-btn svg {
+  width: 18px;
+  height: 18px;
+}
+.floating-btn .icon-play {
+  display: none;
+}
+.floating-btn.is-paused .icon-pause {
+  display: none;
+}
+.floating-btn.is-paused .icon-play {
+  display: block;
+}
+
+.hud-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--bg-panel-strong);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--border-3);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Default state = HUD collapsed: chevron points left ("open me leftward"). */
+  transform: rotate(180deg);
+  transition:
+    transform 220ms ease,
+    background 120ms ease;
+}
+.hud-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+.hud-toggle:hover {
+  background: var(--accent-bg-strong);
+}
+.hud-toggle--shown {
+  /* HUD visible: chevron points right ("close me rightward"). */
+  transform: translateX(-376px);
+}
+
+.section {
+  background: var(--surface-1);
+  border: 1px solid var(--surface-3);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease;
+}
+.section:last-of-type {
+  margin-bottom: 0;
+}
+.section[open] {
+  background: var(--surface-3);
+  border-color: var(--accent-border-soft);
+}
+.section > summary {
+  cursor: pointer;
+  padding: 14px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-light);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  user-select: none;
+  transition: color 120ms ease;
+}
+.section > summary:hover {
+  color: var(--accent-lighter);
+}
+.section > summary::-webkit-details-marker {
+  display: none;
+}
+.section > summary::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  flex-shrink: 0;
+  background-color: var(--text-lead);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='9 6 15 12 9 18'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='9 6 15 12 9 18'/></svg>") center / contain no-repeat;
+  transform: rotate(0deg);
+  transition: transform 150ms ease;
+}
+.section[open] > summary::before {
+  transform: rotate(90deg);
+}
+.section-body {
+  padding: 6px 16px 18px 16px;
+}
+
+/* The Planets section lives inside the HUD; on desktop it is hidden in favour
+   of the fixed top-left legend card, on mobile it replaces that card. */
+.section--legend {
+  display: none;
+}
+
+.field {
+  margin-bottom: 18px;
+}
+.field:last-child {
+  margin-bottom: 4px;
+}
+.field-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.label {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+.val {
+  color: var(--text-strong);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+  height: 4px;
+}
+
+.hud .hint {
+  font-size: 13px;
+  color: var(--text-hint);
+  margin-top: 6px;
+  line-height: 1.55;
+}
+
+.presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+button {
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-2);
+  background: var(--surface-2);
+  color: var(--text-button);
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: background 120ms;
+}
+button:hover {
+  background: var(--accent-bg);
+  border-color: var(--accent-border-strong);
+}
+button.golden {
+  color: var(--golden);
+  border-color: var(--golden-border);
+  background: var(--golden-bg);
+}
+button.golden:hover {
+  background: var(--golden-bg-hover);
+}
+button.danger {
+  color: var(--danger);
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+}
+button.danger:hover {
+  background: var(--danger-bg-hover);
+}
+button.wide {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 8px;
+}
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13.5px;
+  color: var(--text-body);
+  cursor: pointer;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--surface-2);
+}
+.toggle:last-child {
+  border-bottom: none;
+}
+.toggle input {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+}
+
+.diagnostics {
+  font-size: 13px;
+  color: var(--text-diagnostics);
+  line-height: 1.85;
+}
+.diagnostics span {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+#consumedList {
+  color: var(--danger);
+  margin-top: 4px;
+}
+
+.about p,
+.section-body > p {
+  margin: 10px 0;
+  line-height: 1.6;
+  font-size: 13px;
+  color: var(--text-about);
+}
+.section-body > p:first-child {
+  margin-top: 0;
+}
+.section-body > p:last-child {
+  margin-bottom: 14px;
+}
+.about b,
+.section-body > p b {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Inline cheat-sheet for KAM presets — small list of descriptions below the
+   preset buttons so users don't need to hover for tooltips. */
+.presets-key {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 4px 0;
+  font-size: 13px;
+  color: var(--text-about);
+  line-height: 1.6;
+}
+.presets-key li {
+  margin-bottom: 7px;
+}
+.presets-key li:last-child {
+  margin-bottom: 0;
+}
+.presets-key b {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.presets-key em {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+/* The fixed top-left legend card (desktop) and the in-HUD .legend-rows block
+   (mobile) share row, dot, name, and meta styling. Only the container styles
+   differ — fixed positioning lives on .legend only. */
+.legend {
+  position: fixed;
+  left: 16px;
+  top: 16px;
+  padding: 14px 16px;
+  background: var(--bg-panel-soft);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--border-1);
+  border-radius: 12px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text-body);
+}
+.legend-rows {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text-body);
+}
+.legend .row,
+.legend-rows .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.legend .row-left,
+.legend-rows .row-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.legend .dot,
+.legend-rows .dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.legend .meta,
+.legend-rows .meta {
+  color: var(--text-meta);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.legend-note,
+.legend-rows .legend-note {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--surface-2);
+  font-size: 12.5px;
+  color: var(--text-hint);
+  line-height: 1.5;
+  max-width: 280px;
+}
+.legend-note sup {
+  font-size: 10px;
+}
+
+.hint-bottom {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  font-size: 12.5px;
+  color: var(--text-faint);
+  pointer-events: none;
+}
+
+.hud-footer {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--surface-2);
+  font-size: 11.5px;
+  color: var(--text-faint);
+  text-align: center;
+  line-height: 1.5;
+}
+.hud-footer a {
+  color: var(--text-hint);
+  text-decoration: none;
+  transition: color 120ms ease;
+}
+.hud-footer a:hover {
+  color: var(--accent-light);
+  text-decoration: underline;
+}
+
+/* Mobile: HUD becomes a bottom sheet, sliders and buttons get larger touch
+   targets. Below 768px we assume touch input and limited horizontal space. */
+@media (max-width: 768px) {
+  .hud {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 72vh;
+    padding: 22px 20px 24px;
+    border-radius: 16px 16px 0 0;
+    border-bottom: none;
+    font-size: 16px;
+  }
+  .hud--collapsed {
+    transform: translateY(100%);
+  }
+
+  .hud-toggle {
+    top: auto;
+    bottom: 20px;
+    right: 20px;
+    width: 52px;
+    height: 52px;
+    /* Mobile collapsed state: chevron points up ("open me upward"). */
+    transform: rotate(-90deg);
+  }
+  .hud-toggle svg {
+    width: 22px;
+    height: 22px;
+  }
+  .hud-toggle--shown {
+    /* HUD visible below: chevron points down ("close me downward"). */
+    transform: translateY(calc(-72vh + 12px)) rotate(90deg);
+  }
+
+  /* Show in-HUD legend, hide the fixed top-left card */
+  .section--legend {
+    display: block;
+  }
+  .legend {
+    display: none;
+  }
+
+  /* Larger touch-friendly sliders */
+  input[type="range"] {
+    height: 6px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+  }
+
+  .toggle {
+    padding: 10px 0;
+    font-size: 15px;
+  }
+  .toggle input {
+    width: 22px;
+    height: 22px;
+  }
+
+  button {
+    padding: 12px 14px;
+    font-size: 15px;
+    min-height: 44px;
+  }
+
+  .section > summary {
+    padding: 16px;
+    font-size: 14px;
+  }
+
+  .hint-bottom {
+    display: none;
+  }
+
+  /* Larger floating controls for touch */
+  .floating-btn {
+    width: 48px;
+    height: 48px;
+  }
+  .floating-btn svg {
+    width: 24px;
+    height: 24px;
+  }
+}

@@ -115,10 +115,20 @@ export const SUN_CAPTURE_RADIUS = 0.18;
 export const TRAIL_LENGTH = 1500;
 
 export const ASTEROID_BELT = {
-  count: 1500,
+  count: typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches ? 800 : 1500,
   innerRadius: 2.2,
   outerRadius: 3.2,
   thickness: 0.18,
+};
+
+/**
+ * Camera zoom limits. `minDistance` prevents the camera from passing inside
+ * the Sun's visual sphere; `maxDistance` keeps the viewer inside the
+ * background-star shell (which extends to ~400 AU in scene-builder.js).
+ */
+export const CAMERA_LIMITS = {
+  minDistance: 0.4,
+  maxDistance: 150,
 };
 
 /**

@@ -11,7 +11,7 @@ Built with [three.js](https://threejs.org/), no build step required.
 ## What you can do
 
 - Watch the real Solar System under Newtonian gravity at speeds from 1 to 1000 years per second.
-- See Mercury's perihelion precession (the classical Newtonian part — about 5557″/century).
+- See Mercury's perihelion precession from planetary perturbations — about 532″/century is the part an N-body integrator can in principle reproduce at long times (the 43″/century relativistic excess is not modelled; the demo doesn't measure the precession rate explicitly).
 - Switch to the inertial frame and see the Sun wobble around the system's centre of mass (the basis of the radial-velocity exoplanet-detection method).
 - Break stability through any of four mechanisms: planet masses, orbital eccentricities, inclinations, or gas drag.
 - Apply KAM presets that demonstrate specific dynamical regimes: golden-ratio resonance protection, integer resonances (2:1, 3:1) at Kirkwood-gap positions, and full catastrophic collapse.
@@ -19,14 +19,21 @@ Built with [three.js](https://threejs.org/), no build step required.
 ## Files
 
 ```
-solar-system-split/
+solar-system/
 ├── index.html          page structure, importmap for three.js, UI panels
-├── styles.css          HUD, sliders, accordion sections
+├── styles/
+│   ├── tokens.css      CSS custom properties (colours) — edit to retheme
+│   └── main.css        HUD, sliders, sections, mobile media queries
 ├── main.js             scene assembly and orchestration
 ├── README.md
+├── PHYSICS.md
+├── LICENSE             MIT
+├── .gitignore
+├── vendor/three/       pinned three.js@0.160.0 (vendored — no CDN dependency)
 ├── screenshots/        preview images
 └── src/
     ├── data.js                 planet data, KAM presets, camera presets
+    ├── theme.js                planet and Sun colour palette
     ├── orbital-mechanics.js    Kepler ↔ Cartesian, instantaneous eccentricity
     ├── physics-engine.js       N-body Velocity-Verlet integration with drag
     ├── scene-builder.js        scene, lights, mesh factories, barycenter marker
@@ -35,12 +42,27 @@ solar-system-split/
     └── animation-loop.js       requestAnimationFrame, HUD updates
 ```
 
+## Tests
+
+Unit tests for the pure-math modules and integration tests for energy / angular-momentum / centre-of-mass conservation.
+
+```bash
+npm install   # one-time: installs vitest and three for testing
+npm test
+```
+
+Runtime stays no-build — the npm dependencies are dev-only and live in `node_modules/` (gitignored). The page itself loads three.js from the vendored `vendor/three/`.
+
+## Physics and numerical methods
+
+See [PHYSICS.md](PHYSICS.md) for detailed documentation of units, the Velocity-Verlet integrator, force calculations (Newtonian gravity + linear gas drag), coordinate frames, derived quantities (Laplace–Runge–Lenz eccentricity, Kepler period), KAM preset rationale, asteroid-belt simplifications, and references.
+
 ## Run locally
 
 ES modules require a local HTTP server — opening `index.html` directly via double-click will fail with CORS errors.
 
 ```bash
-cd solar-system-split
+cd solar-system
 python -m http.server 8000
 # then open http://localhost:8000 in browser
 ```
@@ -49,26 +71,16 @@ Or any other static server (Node `http-server`, VS Code Live Server extension, e
 
 ## Deploy to GitHub Pages
 
-1. Create a new GitHub repository (e.g. `solar-system`).
-2. Copy the contents of this folder into the repo root.
-3. Commit and push:
+If you fork this repository and want to publish your own copy:
 
-```bash
-git init
-git add .
-git commit -m "Initial commit: solar system simulation"
-git branch -M main
-git remote add origin git@github.com:YOUR_USERNAME/solar-system.git
-git push -u origin main
-```
-
-4. In the repository on GitHub: **Settings → Pages → Source: Deploy from a branch → Branch: main → / (root) → Save.**
-5. Wait ~1 minute. The site will be live at `https://YOUR_USERNAME.github.io/solar-system/`.
+1. Push the contents to the root of a public GitHub repository.
+2. Open **Settings → Pages**, set Source to **Deploy from a branch**, Branch to **main**, folder to **/ (root)**, and Save.
+3. After ~1 minute the site will be live at `https://<your-username>.github.io/<repo-name>/`.
 
 ## Embedding on another site
 
 ```html
-<iframe src="https://YOUR_USERNAME.github.io/solar-system/"
+<iframe src="https://<your-username>.github.io/<repo-name>/"
         width="100%" height="700"
         style="border: none; border-radius: 12px;">
 </iframe>
@@ -78,7 +90,7 @@ git push -u origin main
 
 The simulation reproduces several real celestial-mechanical effects, in order of how visible they are:
 
-1. **Perihelion precession of Mercury** (Newtonian only — ~5557″/century, classical part). Visible at speeds above 100 years/s as the orbit plane slowly turning.
+1. **Perihelion precession of Mercury** — about 532″/century from gravitational perturbations by the other planets is what an N-body integrator is expected to reproduce at long times (the demo doesn't measure it explicitly). The famous additional 43″/century that Einstein explained via General Relativity is not modelled here; the often-quoted total of ~5600″/century includes the precession of the equinox itself, which is a choice-of-frame effect rather than an orbital one. Visible at speeds above 100 years/s as the orbit plane slowly turning.
 2. **Sun wobble around the barycenter** in the inertial frame. The barycenter of the Sun-Jupiter pair lies 1.07 solar radii outside the Sun's surface in reality. Use the visual-scale slider to shrink the Sun and verify this geometrically.
 3. **Precession of ascending nodes**, eccentricity oscillations (Laplace-Lagrange cycles, ~100 000-year period for Earth), inclination drift.
 4. **Near-resonance Jupiter-Saturn** ~5:2 ratio is a stable feature of the actual Solar System, reproduced naturally by N-body integration.
@@ -96,4 +108,8 @@ The simulation reproduces several real celestial-mechanical effects, in order of
 
 ## License
 
-MIT.
+Released under the [MIT License](LICENSE).
+
+## Author
+
+[Alsu Bulatova](https://bulatovaalsu.substack.com) — independent researcher.

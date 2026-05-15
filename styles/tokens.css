@@ -1,0 +1,51 @@
+/* Design tokens. Edit here to retheme the whole HUD in one place. */
+:root {
+  /* Backgrounds */
+  --bg-page: #000;
+  --bg-panel: rgb(15 18 35 / 0.78);
+  --bg-panel-strong: rgb(15 18 35 / 0.85);
+  --bg-panel-soft: rgb(15 18 35 / 0.75);
+
+  /* Translucent surfaces and borders (white-tinted) */
+  --surface-1: rgb(255 255 255 / 0.035);
+  --surface-2: rgb(255 255 255 / 0.04);
+  --surface-3: rgb(255 255 255 / 0.06);
+  --border-1: rgb(255 255 255 / 0.08);
+  --border-2: rgb(255 255 255 / 0.1);
+  --border-3: rgb(255 255 255 / 0.12);
+  --border-hover: rgb(255 255 255 / 0.18);
+
+  /* Text (cool blue/lavender hierarchy) */
+  --text-strong: #f1f5ff;
+  --text-primary: #e8efff;
+  --text-body: #c8d3e6;
+  --text-button: #d3dcef;
+  --text-secondary: #afbcd8;
+  --text-diagnostics: #98a4c0;
+  --text-about: #93a1bf;
+  --text-lead: #8d99b3;
+  --text-meta: #9fa4b3;
+  --text-hint: #a0acc6;
+  --text-faint: #7a85a0;
+
+  /* Accent (lavender/violet — sliders, section headers, hover states) */
+  --accent: #a78bfa;
+  --accent-light: #c4b5fd;
+  --accent-lighter: #d8c8ff;
+  --accent-border-soft: rgb(167 139 250 / 0.18);
+  --accent-border-strong: rgb(167 139 250 / 0.4);
+  --accent-bg: rgb(124 58 237 / 0.25);
+  --accent-bg-strong: rgb(124 58 237 / 0.4);
+
+  /* Golden (KAM-stable preset — φ resonance) */
+  --golden: #fde68a;
+  --golden-border: rgb(253 224 71 / 0.5);
+  --golden-bg: rgb(253 224 71 / 0.05);
+  --golden-bg-hover: rgb(253 224 71 / 0.18);
+
+  /* Danger (catastrophic-collapse presets, consumed planets) */
+  --danger: #fca5a5;
+  --danger-border: rgb(248 113 113 / 0.45);
+  --danger-bg: rgb(248 113 113 / 0.06);
+  --danger-bg-hover: rgb(248 113 113 / 0.2);
+}
