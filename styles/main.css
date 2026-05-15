@@ -6,6 +6,10 @@ body {
   color: var(--text-body);
   font-family: ui-sans-serif, system-ui, sans-serif;
   overflow: hidden;
+  /* Prevent iOS Safari and Chrome Mobile from auto-scaling long paragraphs
+     (heuristic that picks up About scales and inflates the text). */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 #app {
